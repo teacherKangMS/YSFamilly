@@ -1,1 +1,472 @@
-https://copilotstudio.microsoft.com/environments/Default-9ef36566-f756-4f11-9c5f-307c10f409f9/bots/cre46_bot_MR2F3b/webchat?__version__=2&enableFileAttachment=false&cliAgent=true
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+<meta name="theme-color" content="#000000">
+<title>Agent Studio</title>
+<!--
+  ───────── 자주 바꿀 곳 ─────────
+  1) 사용자 목록        → 아래 <script>의 USERS
+  2) 에이전트 목록      → 아래 <script>의 AGENTS (agents 폴더에 .md 파일 추가 후 한 줄 추가)
+  3) 메인 포인트 색     → :root 의 --accent
+  4) 비밀번호 바꾸기    → README.md 의 "비밀번호 바꾸는 법" 참고
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{
+  --bg:#000; --surface-1:#1C1C1E; --surface-2:#2C2C2E; --surface-3:#3A3A3C;
+  --text:#F5F5F7; --text-2:rgba(235,235,245,.64); --text-3:rgba(235,235,245,.36);
+  --line:rgba(255,255,255,.08); --line-strong:rgba(255,255,255,.16);
+  --accent:#0A84FF; --accent-hover:#409CFF; --indigo:#5E5CE6; --teal:#64D2FF; --red:#FF453A;
+  --glass:rgba(22,22,24,.72);
+  --r-sm:12px; --r-md:20px; --r-lg:28px; --r-xl:36px; --r-pill:999px;
+  --font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --max:1200px; --gutter:clamp(16px,4vw,40px);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font);word-break:keep-all;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@supports (corner-shape:squircle){.sq{corner-shape:squircle}}
+
+/* ───── 공통 배경: 밤 도시 빛 번짐 ───── */
+.city-bg{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(55% 40% at 20% 10%,rgba(94,92,230,.22),transparent 70%),
+    radial-gradient(50% 45% at 85% 25%,rgba(10,132,255,.20),transparent 70%),
+    radial-gradient(70% 50% at 50% 110%,rgba(100,210,255,.12),transparent 70%),
+    #000}
+.city-bg::after{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 64px);
+  mask:linear-gradient(to top,#000 0%,transparent 60%)}
+
+/* ───── 잠금 화면 ───── */
+#lock{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;
+  padding:max(56px,env(safe-area-inset-top)) 16px max(32px,env(safe-area-inset-bottom));
+  transition:opacity .6s var(--ease),transform .6s var(--ease)}
+#lock.unlocked{opacity:0;transform:scale(1.06);pointer-events:none}
+.clock{text-align:center;margin-bottom:auto}
+.clock .date{font-size:19px;font-weight:600;color:var(--text-2)}
+.clock .time{font-size:clamp(76px,22vw,104px);font-weight:700;letter-spacing:-.04em;line-height:1;
+  margin-top:4px;background:linear-gradient(180deg,#fff,rgba(235,235,245,.7));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+.stage{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;margin-bottom:auto}
+.step{width:100%;display:flex;flex-direction:column;align-items:center;animation:rise .5s var(--ease)}
+.step[hidden]{display:none}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.ask{font-size:24px;font-weight:700;letter-spacing:-.02em;text-align:center}
+.ask-sub{font-size:15px;color:var(--text-2);margin-top:8px}
+.who{display:flex;gap:28px;margin-top:36px}
+.who-btn{display:flex;flex-direction:column;align-items:center;gap:12px}
+.avatar{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;font-size:24px;font-weight:700;letter-spacing:-.02em;
+  background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.04));
+  border:1px solid var(--line-strong);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 20px 50px rgba(0,0,0,.5);
+  backdrop-filter:blur(20px);transition:transform .2s var(--ease),background .2s}
+.who-btn:hover .avatar{background:linear-gradient(145deg,rgba(255,255,255,.2),rgba(255,255,255,.06))}
+.who-btn:active .avatar{transform:scale(.94)}
+.who-btn[data-user=mom] .avatar{color:#BF9CFF}
+.who-btn[data-user=dad] .avatar{color:var(--teal)}
+.who-name{font-size:17px;font-weight:600}
+
+.dots{display:flex;gap:20px;margin:22px 0 34px}
+.dot{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--text);transition:background .15s}
+.dot.on{background:var(--text)}
+.dots.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-14px)}40%{transform:translateX(12px)}60%{transform:translateX(-8px)}80%{transform:translateX(5px)}}
+.msg{height:20px;font-size:14px;color:var(--red);margin-top:-22px;margin-bottom:2px}
+
+.pad{display:grid;grid-template-columns:repeat(3,78px);gap:16px 26px}
+.key{width:78px;height:78px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.10);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  transition:background .25s ease;user-select:none;touch-action:manipulation}
+.key:active,.key.press{background:rgba(255,255,255,.38);transition:none}
+.key b{font-size:34px;font-weight:400;line-height:1}
+.key small{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--text-2);margin-top:2px;height:12px}
+.key.zero{grid-column:2}
+.pad-foot{display:flex;justify-content:space-between;width:286px;margin-top:22px;font-size:17px}
+.pad-foot button{padding:8px 4px;color:var(--text)}
+
+/* ───── 메인 ───── */
+#app{position:relative;z-index:1;opacity:0;transition:opacity .8s var(--ease) .15s}
+#app.show{opacity:1}
+#app[hidden]{display:none}
+nav{position:sticky;top:0;z-index:5;height:56px;background:var(--glass);
+  backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border-bottom:1px solid var(--line)}
+.nav-in{max-width:var(--max);margin:0 auto;height:100%;padding:0 var(--gutter);display:flex;align-items:center;justify-content:space-between}
+.brand{font-weight:700;font-size:17px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.brand i{width:22px;height:22px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--indigo));display:block}
+.nav-r{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--text-2)}
+.chip{height:32px;padding:0 14px;border-radius:var(--r-pill);border:1px solid var(--line-strong);font-size:13px;font-weight:600;color:var(--text);
+  display:inline-flex;align-items:center;gap:6px;transition:background .2s}
+.chip:hover{background:var(--surface-2)}
+
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--gutter)}
+.hero{min-height:72vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 0 60px}
+.eyebrow{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:16px}
+h1{font-size:clamp(44px,7.5vw,96px);font-weight:700;letter-spacing:-.035em;line-height:1.06;
+  background:linear-gradient(180deg,#fff 30%,rgba(235,235,245,.62));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(18px,1.8vw,22px);color:var(--text-2);line-height:1.6;margin-top:22px;max-width:620px}
+.hero-cta{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap;justify-content:center}
+.btn{height:48px;padding:0 26px;border-radius:var(--r-pill);font-weight:600;font-size:16px;display:inline-flex;align-items:center;gap:8px;
+  transition:background .2s,transform .15s;text-decoration:none}
+.btn:active{transform:scale(.97)}
+.btn[hidden]{display:none}
+.btn-p{background:var(--accent);color:#fff}.btn-p:hover{background:var(--accent-hover)}
+.btn-s{background:var(--surface-2);color:var(--text);border:1px solid var(--line-strong)}.btn-s:hover{background:var(--surface-3)}
+
+section.agents{padding:clamp(60px,10vw,140px) 0}
+h2{font-size:clamp(32px,4.5vw,56px);font-weight:700;letter-spacing:-.03em;line-height:1.1}
+.sec-lead{color:var(--text-2);font-size:17px;line-height:1.65;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(16px,2vw,24px);margin-top:48px}
+.card{position:relative;overflow:hidden;background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:clamp(28px,3.5vw,40px);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);display:flex;flex-direction:column;min-height:360px;
+  opacity:0;transform:translateY(20px);transition:opacity .7s var(--ease),transform .7s var(--ease),border-color .2s}
+.card.in{opacity:1;transform:none}
+.card:hover{border-color:var(--line-strong)}
+.card::before{content:"";position:absolute;inset:-40% -20% auto auto;width:70%;height:80%;border-radius:50%;
+  background:radial-gradient(closest-side,var(--glow),transparent);opacity:.22;pointer-events:none}
+.icon{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line)}
+.icon svg{width:26px;height:26px}
+.card h3{font-size:clamp(22px,2.4vw,28px);font-weight:700;letter-spacing:-.02em;margin-top:26px}
+.card p{color:var(--text-2);line-height:1.65;margin-top:10px;font-size:16px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.tag{font-size:13px;font-weight:600;color:var(--text-2);background:var(--surface-2);border-radius:var(--r-pill);padding:6px 12px}
+.card-actions{display:flex;gap:10px;margin-top:auto;padding-top:30px;flex-wrap:wrap}
+.card-actions .btn{height:44px;padding:0 20px;font-size:15px}
+.link{color:var(--accent);font-weight:600;font-size:15px;display:inline-flex;align-items:center;height:44px;padding:0 6px;text-decoration:none}
+.link:hover{color:var(--accent-hover)}
+
+.card.wide{grid-column:span 2;min-height:320px}
+.how{margin-top:clamp(40px,6vw,72px);background:var(--surface-1);border:1px solid var(--line);border-radius:var(--r-xl);padding:8px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.how div{background:var(--bg);border-radius:calc(var(--r-xl) - 8px);padding:28px}
+.how .n{font-size:13px;font-weight:700;color:var(--accent)}
+.how h4{font-size:19px;font-weight:700;margin-top:10px;letter-spacing:-.01em}
+.how p{font-size:15px;color:var(--text-2);margin-top:6px;line-height:1.6}
+
+footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--text-3);font-size:14px}
+
+/* ───── 지침 보기 창 ───── */
+dialog{margin:auto;width:min(860px,calc(100% - 32px));max-height:min(86vh,900px);background:var(--surface-1);color:var(--text);
+  border:1px solid var(--line-strong);border-radius:var(--r-lg);padding:0;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden}
+dialog[open]{display:flex;flex-direction:column;animation:rise .35s var(--ease)}
+dialog::backdrop{background:rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+.dlg-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 16px 24px;border-bottom:1px solid var(--line)}
+.dlg-head h3{font-size:18px;font-weight:700}
+.dlg-head .r{display:flex;gap:8px}
+.x{width:36px;height:36px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;font-size:18px;color:var(--text-2)}
+.dlg-body{overflow:auto;padding:24px;flex:1}
+.dlg-body pre{font-family:var(--mono);font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text-2)}
+
+.toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,20px);background:var(--surface-2);border:1px solid var(--line-strong);
+  border-radius:var(--r-pill);padding:12px 20px;font-size:15px;font-weight:600;opacity:0;transition:.3s var(--ease);z-index:50;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:760px){
+  .grid,.how{grid-template-columns:1fr}
+  .card.wide{grid-column:auto}
+  .nav-r .hi{display:none}
+}
+@media (max-height:700px){
+  .clock .time{font-size:64px}
+  .pad{gap:12px 22px}.key{width:70px;height:70px}.pad{grid-template-columns:repeat(3,70px)}
+  .dots{margin:14px 0 24px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.card{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div class="city-bg"></div>
+
+<!-- ═════════ 잠금 화면 ═════════ -->
+<div id="lock">
+  <div class="clock">
+    <div class="date" id="date"></div>
+    <div class="time" id="time"></div>
+  </div>
+
+  <div class="stage">
+    <!-- 1단계: 누구세요? -->
+    <div class="step" id="step-who">
+      <div class="ask">누구신가요?</div>
+      <div class="ask-sub">엄마예요? 아빠예요?</div>
+      <div class="who">
+        <button class="who-btn" data-user="mom" aria-label="엄마로 들어가기"><span class="avatar">엄마</span></button>
+        <button class="who-btn" data-user="dad" aria-label="아빠로 들어가기"><span class="avatar">아빠</span></button>
+      </div>
+    </div>
+
+    <!-- 2단계: 암호 입력 -->
+    <div class="step" id="step-pin" hidden>
+      <div class="ask" id="pin-title">암호 입력</div>
+      <div class="dots" id="dots" aria-live="polite"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+      <div class="msg" id="msg"></div>
+      <div class="pad" id="pad"></div>
+      <div class="pad-foot">
+        <button id="back">← 다른 사람</button>
+        <button id="del">삭제</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════ 메인 ═════════ -->
+<div id="app" hidden>
+  <nav><div class="nav-in">
+    <div class="brand"><i class="sq"></i>Agent Studio</div>
+    <div class="nav-r"><span class="hi" id="hi"></span><button class="chip" id="lock-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>잠그기</button></div>
+  </div></nav>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="eyebrow">윤승이네 AI 에이전트</div>
+      <h1 id="hero-title">일을 맡길<br>준비가 됐어요.</h1>
+      <p class="lead">가족 에이전트에게 말을 걸면 알맞은 에이전트가 일을 받아요. 지침은 아래에서 보고 복사할 수 있어요.</p>
+      <div class="hero-cta">
+        <a class="btn btn-p" id="chat-btn" href="#" target="_blank" rel="noopener" hidden>에이전트와 대화하기 ↗</a>
+        <a class="btn btn-s" href="#agents">에이전트 보기</a>
+        <a class="btn btn-s" href="#how">사용 방법</a>
+      </div>
+    </section>
+
+    <section class="agents" id="agents">
+      <h2>에이전트</h2>
+      <p class="sec-lead">카드마다 지침 전체를 보거나, 한 번에 복사하거나, 파일로 내려받을 수 있어요.</p>
+      <div class="grid" id="grid"></div>
+
+      <div class="how" id="how">
+        <div><div class="n">STEP 1</div><h4>고르기</h4><p>하려는 일에 맞는 에이전트 카드를 고릅니다.</p></div>
+        <div><div class="n">STEP 2</div><h4>복사하기</h4><p>'복사' 버튼을 누르면 지침 전체가 복사돼요.</p></div>
+        <div><div class="n">STEP 3</div><h4>붙여넣기</h4><p>에이전트 스튜디오의 지침 칸에 붙여 넣고 [대괄호]를 채웁니다.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="wrap">Agent Studio · 윤승이네 가족</div></footer>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg-head">
+    <h3 id="dlg-title"></h3>
+    <div class="r"><button class="chip" id="dlg-copy">복사</button><button class="x" id="dlg-x" aria-label="닫기">✕</button></div>
+  </div>
+  <div class="dlg-body"><pre id="dlg-text"></pre></div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ───────── 설정 ───────── */
+// 비밀번호는 원문 대신 "암호화된 값(해시)"만 저장해요. 바꾸는 법은 README 참고.
+// ★ Copilot Studio 에이전트 주소: 따옴표 안에 붙여 넣기 (비워 두면 버튼이 숨겨져요)
+const CHAT_URL = "https://copilotstudio.microsoft.com/environments/Default-9ef36566-f756-4f11-9c5f-307c10f409f9/bots/cre46_bot_MR2F3b/webchat?__version__=2&enableFileAttachment=false&cliAgent=true";
+
+const SALT = "agent-studio:";
+const USERS = {
+  mom: { name: "엄마", hash: "d8aa18bcf9e324aab9366c80268db08f1e4a3d129887d0620c6487b5e126de37" },
+  dad: { name: "아빠", hash: "44f270cb4167c283b0205684b941a8a2d7fe01e6245b5b06baf333aa9c092cf9" },
+};
+const MAX_TRY = 3;        // 몇 번 틀리면 잠시 막을지
+const WAIT_SEC = 30;      // 막는 시간(초)
+
+// 에이전트 추가: agents 폴더에 .md 파일을 넣고 여기에 한 덩어리 추가
+// wide: true 를 넣으면 카드가 두 칸을 차지해요
+const AGENTS = [
+  {
+    file: "agents/all-time-number-one.md",
+    title: "All time number one",
+    desc: "수업 자료, 평가, 공문·가정통신문, 학교 업무, 엑셀, 일정 정리까지. 어디로 보낼지 애매한 일은 모두 여기서 처리해요.",
+    tags: ["수업", "행정", "문서", "데이터", "잡다한 일 전부"],
+    glow: "#5E5CE6",
+    wide: true,
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#BF9CFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>',
+  },
+  {
+    file: "agents/skill-factory.md",
+    title: "Skill Factory",
+    desc: "Claude에 넣을 스킬을 만들고, 바로 올릴 수 있는 zip 파일로 묶어 줘요.",
+    tags: ["스킬", "SKILL.md", "zip"],
+    glow: "#30D158",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#30D158" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8M12 13v8"/></svg>',
+  },
+  {
+    file: "agents/webpage-agent.md",
+    title: "webpage-agent",
+    desc: "업무용 웹페이지와 랜딩페이지를 만들어요. 어두운 도시 톤, iOS 다크 색, 곡선 모서리.",
+    tags: ["웹페이지", "HTML", "다크 디자인"],
+    glow: "#0A84FF",
+    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="#64D2FF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M3 9h18M8 21h8"/></svg>',
+  },
+];
+
+/* ───────── 시계 ───────── */
+const $ = (s) => document.querySelector(s);
+if (CHAT_URL) { $("#chat-btn").href = CHAT_URL; $("#chat-btn").hidden = false; }
+function tick() {
+  const d = new Date();
+  $("#date").textContent = d.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
+  $("#time").textContent = d.toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit", hour12: false });
+}
+tick(); setInterval(tick, 10000);
+
+/* ───────── 잠금 해제 흐름 ───────── */
+let who = null, pin = "";
+const LETTERS = ["", "", "ABC", "DEF", "GHI", "JKL", "MNO", "PQRS", "TUV", "WXYZ"];
+const pad = $("#pad");
+[1,2,3,4,5,6,7,8,9,0].forEach((n) => {
+  const b = document.createElement("button");
+  b.className = "key" + (n === 0 ? " zero" : "");
+  b.dataset.n = n;
+  b.setAttribute("aria-label", String(n));
+  b.innerHTML = `<b>${n}</b><small>${LETTERS[n] || ""}</small>`;
+  b.addEventListener("click", () => press(String(n)));
+  pad.appendChild(b);
+});
+
+document.querySelectorAll(".who-btn").forEach((b) =>
+  b.addEventListener("click", () => {
+    who = b.dataset.user; pin = ""; draw();
+    $("#pin-title").textContent = `${USERS[who].name}, 확인 번호 입력`;
+    $("#msg").textContent = "";
+    if (Date.now() < blockedUntil) countdown();
+    $("#step-who").hidden = true; $("#step-pin").hidden = false;
+  })
+);
+$("#back").addEventListener("click", () => { who = null; pin = ""; draw(); $("#step-pin").hidden = true; $("#step-who").hidden = false; });
+$("#del").addEventListener("click", () => { pin = pin.slice(0, -1); draw(); });
+
+// 컴퓨터 키보드로도 입력 가능
+document.addEventListener("keydown", (e) => {
+  if ($("#step-pin").hidden || !$("#app").hidden) return;
+  if (/^[0-9]$/.test(e.key)) {
+    const k = pad.querySelector(`[data-n="${e.key}"]`);
+    k.classList.add("press"); setTimeout(() => k.classList.remove("press"), 120);
+    press(e.key);
+  } else if (e.key === "Backspace") { pin = pin.slice(0, -1); draw(); }
+  else if (e.key === "Escape") $("#back").click();
+});
+
+function draw() {
+  document.querySelectorAll(".dot").forEach((d, i) => d.classList.toggle("on", i < pin.length));
+  $("#del").textContent = pin.length ? "삭제" : "";
+}
+
+async function sha256(t) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t));
+  return [...new Uint8Array(buf)].map((x) => x.toString(16).padStart(2, "0")).join("");
+}
+
+let busy = false, fails = 0, blockedUntil = 0, timer = null;
+function countdown() {
+  clearInterval(timer);
+  const run = () => {
+    const left = Math.ceil((blockedUntil - Date.now()) / 1000);
+    if (left <= 0) { clearInterval(timer); $("#msg").textContent = ""; pad.style.opacity = 1; return; }
+    pad.style.opacity = .35;
+    $("#msg").textContent = `${left}초 후에 다시 시도해 주세요`;
+  };
+  run(); timer = setInterval(run, 250);
+}
+
+async function press(n) {
+  if (busy || pin.length >= 4 || Date.now() < blockedUntil) return;
+  pin += n; draw(); $("#msg").textContent = "";
+  if (pin.length < 4) return;
+  busy = true;
+  const ok = (await sha256(SALT + pin)) === USERS[who].hash;
+  setTimeout(() => {
+    if (ok) unlock(who);
+    else {
+      const dots = $("#dots");
+      dots.classList.remove("shake"); void dots.offsetWidth; dots.classList.add("shake");
+      if (navigator.vibrate) navigator.vibrate(200);
+      $("#msg").textContent = "확인 번호가 맞지 않아요";
+      pin = ""; draw();
+      if (++fails >= MAX_TRY) { fails = 0; blockedUntil = Date.now() + WAIT_SEC * 1000; countdown(); }
+    }
+    busy = false;
+  }, 180);
+}
+
+function unlock(id) {
+  try { sessionStorage.setItem("as-user", id); } catch (e) {}
+  $("#hi").textContent = USERS[id].name;
+  $("#hero-title").innerHTML = `${USERS[id].name},<br>오늘은 뭘 맡길까요?`;
+  $("#lock").classList.add("unlocked");
+  $("#app").hidden = false;
+  requestAnimationFrame(() => $("#app").classList.add("show"));
+  observeCards();
+}
+
+$("#lock-btn").addEventListener("click", () => {
+  try { sessionStorage.removeItem("as-user"); } catch (e) {}
+  location.reload();
+});
+
+// 새로고침해도 같은 탭에서는 잠금 유지 해제
+try { const s = sessionStorage.getItem("as-user"); if (s && USERS[s]) unlock(s); } catch (e) {}
+
+/* ───────── 에이전트 카드 ───────── */
+const grid = $("#grid");
+AGENTS.forEach((a, i) => {
+  const c = document.createElement("article");
+  c.className = "card sq" + (a.wide ? " wide" : "");
+  c.style.setProperty("--glow", a.glow);
+  c.style.transitionDelay = `${i * 80}ms`;
+  c.innerHTML = `
+    <div class="icon sq">${a.icon}</div>
+    <h3>${a.title}</h3>
+    <p>${a.desc}</p>
+    <div class="tags">${a.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
+    <div class="card-actions">
+      <button class="btn btn-p" data-act="copy">복사</button>
+      <button class="btn btn-s" data-act="view">지침 보기</button>
+      <a class="link" href="${a.file}" download>다운로드 ›</a>
+    </div>`;
+  c.querySelector('[data-act="copy"]').addEventListener("click", () => copyAgent(a));
+  c.querySelector('[data-act="view"]').addEventListener("click", () => viewAgent(a));
+  grid.appendChild(c);
+});
+
+function observeCards() {
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.15 });
+  document.querySelectorAll(".card").forEach((c) => io.observe(c));
+}
+
+const cache = {};
+async function load(a) {
+  if (cache[a.file]) return cache[a.file];
+  const r = await fetch(a.file);
+  if (!r.ok) throw new Error(r.status);
+  return (cache[a.file] = await r.text());
+}
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch (e) { return false; }
+}
+async function copyAgent(a) {
+  try { toast((await copyText(await load(a))) ? "복사했어요. 붙여 넣기만 하면 돼요" : "복사가 막혔어요. '지침 보기'에서 직접 복사해 주세요"); }
+  catch (e) { toast("파일을 못 불러왔어요. GitHub Pages 주소로 열어 주세요"); }
+}
+let current = null;
+async function viewAgent(a) {
+  current = a;
+  $("#dlg-title").textContent = a.title;
+  $("#dlg-text").textContent = "불러오는 중…";
+  $("#dlg").showModal();
+  try { $("#dlg-text").textContent = await load(a); }
+  catch (e) { $("#dlg-text").textContent = "파일을 불러오지 못했어요.\nGitHub Pages 주소로 열었는지 확인해 주세요."; }
+}
+$("#dlg-x").addEventListener("click", () => $("#dlg").close());
+$("#dlg").addEventListener("click", (e) => { if (e.target === $("#dlg")) $("#dlg").close(); });
+$("#dlg-copy").addEventListener("click", async () => { if (current) copyAgent(current); });
+
+let tt;
+function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 2200); }
+</script>
+</body>
+</html>
